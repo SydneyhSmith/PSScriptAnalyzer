@@ -1,13 +1,16 @@
-﻿$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
 
-$settings = @{
-    IncludeRules = @("PSUseSupportsShouldProcess")
-    Rules = @{
-        PSUseSupportsShouldProcess = @{
-            Enable = $true
+    $settings = @{
+        IncludeRules = @("PSUseSupportsShouldProcess")
+        Rules = @{
+            PSUseSupportsShouldProcess = @{
+                Enable = $true
+            }
         }
     }
 }

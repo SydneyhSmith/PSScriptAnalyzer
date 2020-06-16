@@ -1,15 +1,20 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Describe "Test Directed Graph" {
     Context "When a graph is created" {
-        $digraph = New-Object -TypeName 'Microsoft.Windows.PowerShell.ScriptAnalyzer.DiGraph[string]'
-        $digraph.AddVertex('v1');
-        $digraph.AddVertex('v2');
-        $digraph.AddVertex('v3');
-        $digraph.AddVertex('v4');
-        $digraph.AddVertex('v5');
+        BeforeAll {
+            $digraph = New-Object -TypeName 'Microsoft.Windows.PowerShell.ScriptAnalyzer.DiGraph[string]'
+            $digraph.AddVertex('v1');
+            $digraph.AddVertex('v2');
+            $digraph.AddVertex('v3');
+            $digraph.AddVertex('v4');
+            $digraph.AddVertex('v5');
 
-        $digraph.AddEdge('v1', 'v2');
-        $digraph.AddEdge('v1', 'v5');
-        $digraph.AddEdge('v2', 'v4');
+            $digraph.AddEdge('v1', 'v2');
+            $digraph.AddEdge('v1', 'v5');
+            $digraph.AddEdge('v2', 'v4');
+        }
 
         It "correctly adds the vertices" {
             $digraph.NumVertices | Should -Be 5
@@ -30,7 +35,7 @@ Describe "Test Directed Graph" {
     Context "Runspaces should be disposed" {
         It "Running analyzer 100 times should only create a limited number of runspaces" -Skip:$($PSVersionTable.PSVersion.Major -le 4) {
             $null = 1..100 | ForEach-Object { Invoke-ScriptAnalyzer -ScriptDefinition 'gci' }
-            (Get-Runspace).Count | Should -BeLessOrEqual 11 -Because 'Number of Runspaces should not exceed size of runspace pool cache (10) plus the the default runspace pool (1) in CommandInfoCache'
+            (Get-Runspace).Count | Should -BeLessOrEqual 14 -Because 'Number of Runspaces should be bound (size of runspace pool cache is 10)'
         }
     }
 }

@@ -1,9 +1,13 @@
-﻿$violationMessage = "Cmdlet 'Get-Command' has positional parameter. Please use named parameters instead of positional parameters when calling a command."
-$violationName = "PSAvoidUsingPositionalParameters"
-$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$violations = Invoke-ScriptAnalyzer $directory\AvoidPositionalParameters.ps1 | Where-Object {$_.RuleName -eq $violationName}
-$noViolations = Invoke-ScriptAnalyzer $directory\AvoidPositionalParametersNoViolations.ps1 | Where-Object {$_.RuleName -eq $violationName}
-$noViolationsDSC = Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue $directory\serviceconfigdisabled.ps1 | Where-Object {$_.RuleName -eq $violationName}
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
+BeforeAll {
+    $violationMessage = "Cmdlet 'Get-Command' has positional parameter. Please use named parameters instead of positional parameters when calling a command."
+    $violationName = "PSAvoidUsingPositionalParameters"
+    $violations = Invoke-ScriptAnalyzer $PSScriptRoot\AvoidPositionalParameters.ps1 | Where-Object {$_.RuleName -eq $violationName}
+    $noViolations = Invoke-ScriptAnalyzer $PSScriptRoot\AvoidPositionalParametersNoViolations.ps1 | Where-Object {$_.RuleName -eq $violationName}
+    $noViolationsDSC = Invoke-ScriptAnalyzer -ErrorAction SilentlyContinue $PSScriptRoot\serviceconfigdisabled.ps1 | Where-Object {$_.RuleName -eq $violationName}
+}
 
 Describe "AvoidPositionalParameters" {
     Context "When there are violations" {
@@ -45,7 +49,7 @@ Describe "AvoidPositionalParameters" {
                     [Parameter(Position=3)]$C)
                 }
                 Foo "a" "b" "c"}
-            $warnings = Invoke-ScriptAnalyzer -ScriptDefinition "$sb"
+            $warnings = Invoke-ScriptAnalyzer -ScriptDefinition "$sb" -ExcludeRule PSReviewUnusedParameter
             $warnings.Count | Should -Be 1
             $warnings.RuleName | Should -BeExactly $violationName
         }

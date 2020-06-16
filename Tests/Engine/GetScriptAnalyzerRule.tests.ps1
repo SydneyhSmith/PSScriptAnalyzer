@@ -1,15 +1,20 @@
-$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
-Import-Module (Join-Path $testRootDirectory 'PSScriptAnalyzerTestHelper.psm1')
-$sa = Get-Command Get-ScriptAnalyzerRule
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-$singularNouns = "PSUseSingularNouns" # this rule does not exist for coreclr version
-$approvedVerbs = "PSUseApprovedVerbs"
-$cmdletAliases = "PSAvoidUsingCmdletAliases"
-$dscIdentical = "PSDSCUseIdenticalParametersForDSC"
+BeforeAll {
+    $sa = Get-Command Get-ScriptAnalyzerRule
+
+    $singularNouns = "PSUseSingularNouns" # this rule does not exist for coreclr version
+    $approvedVerbs = "PSUseApprovedVerbs"
+    $cmdletAliases = "PSAvoidUsingCmdletAliases"
+    $dscIdentical = "PSDSCUseIdenticalParametersForDSC"
+}
 
 Describe "Test available parameters" {
-    $params = $sa.Parameters
+    BeforeAll {
+        $params = $sa.Parameters
+    }
+
     Context "Name parameter" {
         It "has a RuleName parameter" {
             $params.ContainsKey("Name") | Should -BeTrue
@@ -33,7 +38,6 @@ Describe "Test available parameters" {
 			$params.CustomRulePath.Aliases.Contains("CustomizedRulePath") | Should -BeTrue
 		}
     }
-
 }
 
 Describe "Test Name parameters" {
@@ -58,9 +62,9 @@ Describe "Test Name parameters" {
         }
 
         It "get Rules with no parameters supplied" {
-			$defaultRules = Get-ScriptAnalyzerRule
-            $expectedNumRules = 60
-            if ((Test-PSEditionCoreClr) -or (Test-PSVersionV3) -or (Test-PSVersionV4))
+            $defaultRules = Get-ScriptAnalyzerRule
+            $expectedNumRules = 65
+            if ($IsCoreCLR -or ($PSVersionTable.PSVersion.Major -eq 3) -or ($PSVersionTable.PSVersion.Major -eq 4))
             {
                 # for PSv3 PSAvoidGlobalAliases is not shipped because
                 # it uses StaticParameterBinder.BindCommand which is
@@ -95,38 +99,39 @@ Describe "Test Name parameters" {
 }
 
 Describe "Test RuleExtension" {
-    $community = "CommunityAnalyzerRules"
-    $measureRequired = "Measure-RequiresModules"
     Context "When used correctly" {
-
-		$expectedNumCommunityRules = 10
-		if ($PSVersionTable.PSVersion -ge [Version]'4.0.0')
-		{
-			$expectedNumCommunityRules = 12
-		}
+        BeforeAll {
+            $community = "CommunityAnalyzerRules"
+            $measureRequired = "Measure-RequiresModules"
+            $expectedNumCommunityRules = 10
+            if ($PSVersionTable.PSVersion -ge [Version]'4.0.0')
+            {
+                $expectedNumCommunityRules = 12
+            }
+        }
         It "with the module folder path" {
-            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $directory\CommunityAnalyzerRules | Where-Object {$_.SourceName -eq $community}
+            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $PSScriptRoot\CommunityAnalyzerRules | Where-Object {$_.SourceName -eq $community}
             $ruleExtension.Count | Should -Be $expectedNumCommunityRules
         }
 
         It "with the psd1 path" {
-            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $directory\CommunityAnalyzerRules\CommunityAnalyzerRules.psd1 | Where-Object {$_.SourceName -eq $community}
+            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $PSScriptRoot\CommunityAnalyzerRules\CommunityAnalyzerRules.psd1 | Where-Object {$_.SourceName -eq $community}
             $ruleExtension.Count | Should -Be $expectedNumCommunityRules
 
         }
 
         It "with the psm1 path" {
-            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $directory\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 | Where-Object {$_.SourceName -eq $community}
+            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $PSScriptRoot\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 | Where-Object {$_.SourceName -eq $community}
             $ruleExtension.Count | Should -Be $expectedNumCommunityRules
         }
 
         It "with Name of a built-in rules" {
-            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $directory\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 -Name $singularNouns
+            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $PSScriptRoot\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 -Name $singularNouns
             $ruleExtension.Count | Should -Be 0
         }
 
         It "with Names of built-in, DSC and non-built-in rules" {
-            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $directory\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 -Name $singularNouns, $measureRequired, $dscIdentical
+            $ruleExtension = Get-ScriptAnalyzerRule -CustomizedRulePath $PSScriptRoot\CommunityAnalyzerRules\CommunityAnalyzerRules.psm1 -Name $singularNouns, $measureRequired, $dscIdentical
             $ruleExtension.Count | Should -Be 1
             ($ruleExtension | Where-Object {$_.RuleName -eq $measureRequired}).Count | Should -Be 1
             ($ruleExtension | Where-Object {$_.RuleName -eq $singularNouns}).Count | Should -Be 0
@@ -152,17 +157,17 @@ Describe "Test RuleExtension" {
 Describe "TestSeverity" {
     It "filters rules based on the specified rule severity" {
         $rules = Get-ScriptAnalyzerRule -Severity Error
-        $rules.Count | Should -Be 6
+        $rules.Count | Should -Be 7
     }
 
     It "filters rules based on multiple severity inputs"{
         $rules = Get-ScriptAnalyzerRule -Severity Error,Information
-        $rules.Count | Should -Be 16
+        $rules.Count | Should -Be 18
     }
 
         It "takes lower case inputs" {
         $rules = Get-ScriptAnalyzerRule -Severity error
-        $rules.Count | Should -Be 6
+        $rules.Count | Should -Be 7
     }
 }
 

@@ -19,7 +19,7 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Strings {
@@ -147,6 +147,15 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string AvoidAssignmentToReadOnlyAutomaticVariableIntroducedInPowerShell6_0Error {
             get {
                 return ResourceManager.GetString("AvoidAssignmentToReadOnlyAutomaticVariableIntroducedInPowerShell6_0Error", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The Variable &apos;{0}&apos; is an automatic variable that is built into PowerShell, assigning to it might have undesired side effects. If assignment is not by design, please use a different name..
+        /// </summary>
+        internal static string AvoidAssignmentToWritableAutomaticVariableError {
+            get {
+                return ResourceManager.GetString("AvoidAssignmentToWritableAutomaticVariableError", resourceCulture);
             }
         }
         
@@ -421,6 +430,42 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Avoid long lines.
+        /// </summary>
+        internal static string AvoidLongLinesCommonName {
+            get {
+                return ResourceManager.GetString("AvoidLongLinesCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Line lengths should be less than the configured maximum.
+        /// </summary>
+        internal static string AvoidLongLinesDescription {
+            get {
+                return ResourceManager.GetString("AvoidLongLinesDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Line exceeds the configured maximum length of {0} characters.
+        /// </summary>
+        internal static string AvoidLongLinesError {
+            get {
+                return ResourceManager.GetString("AvoidLongLinesError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to AvoidLongLines.
+        /// </summary>
+        internal static string AvoidLongLinesName {
+            get {
+                return ResourceManager.GetString("AvoidLongLinesName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Avoid using null or empty HelpMessage parameter attribute..
         /// </summary>
         internal static string AvoidNullOrEmptyHelpMessageAttributeCommonName {
@@ -453,6 +498,42 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string AvoidNullOrEmptyHelpMessageAttributeName {
             get {
                 return ResourceManager.GetString("AvoidNullOrEmptyHelpMessageAttributeName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Avoid overwriting built in cmdlets.
+        /// </summary>
+        internal static string AvoidOverwritingBuiltInCmdletsCommonName {
+            get {
+                return ResourceManager.GetString("AvoidOverwritingBuiltInCmdletsCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Do not overwrite the definition of a cmdlet that is included with PowerShell.
+        /// </summary>
+        internal static string AvoidOverwritingBuiltInCmdletsDescription {
+            get {
+                return ResourceManager.GetString("AvoidOverwritingBuiltInCmdletsDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is a cmdlet that is included with PowerShell (version {1}) whose definition should not be overridden.
+        /// </summary>
+        internal static string AvoidOverwritingBuiltInCmdletsError {
+            get {
+                return ResourceManager.GetString("AvoidOverwritingBuiltInCmdletsError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to AvoidOverwritingBuiltInCmdlets.
+        /// </summary>
+        internal static string AvoidOverwritingBuiltInCmdletsName {
+            get {
+                return ResourceManager.GetString("AvoidOverwritingBuiltInCmdletsName", resourceCulture);
             }
         }
         
@@ -534,61 +615,6 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string AvoidTrailingWhitespaceName {
             get {
                 return ResourceManager.GetString("AvoidTrailingWhitespaceName", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to AvoidLongLines.
-        /// </summary>
-        internal static string AvoidLongLinesName
-        {
-            get
-            {
-                return ResourceManager.GetString("AvoidLongLinesName", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Avoid long lines.
-        /// </summary>
-        internal static string AvoidLongLinesCommonName
-        {
-            get
-            {
-                return ResourceManager.GetString("AvoidLongLinesCommonName", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Each line should be under 120 characters.
-        /// </summary>
-        internal static string AvoidLongLinesDescription
-        {
-            get
-            {
-                return ResourceManager.GetString("AvoidLongLinesDescription", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Line is longer than 120 characters.
-        /// </summary>
-        internal static string AvoidLongLinesError
-        {
-            get
-            {
-                return ResourceManager.GetString("AvoidLongLinesError", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to AvoidLongLines.
-        /// </summary>
-        internal static string AvoidLongLinesWhitespaceName
-        {
-            get
-            {
-                return ResourceManager.GetString("AvoidLongLinesName", resourceCulture);
             }
         }
         
@@ -832,6 +858,42 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string AvoidUsingDeprecatedManifestFieldsName {
             get {
                 return ResourceManager.GetString("AvoidUsingDeprecatedManifestFieldsName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Avoid using double quotes if the string is constant..
+        /// </summary>
+        internal static string AvoidUsingDoubleQuotesForConstantStringCommonName {
+            get {
+                return ResourceManager.GetString("AvoidUsingDoubleQuotesForConstantStringCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use single quotes if the string is constant..
+        /// </summary>
+        internal static string AvoidUsingDoubleQuotesForConstantStringDescription {
+            get {
+                return ResourceManager.GetString("AvoidUsingDoubleQuotesForConstantStringDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use single quotes when a string is constant..
+        /// </summary>
+        internal static string AvoidUsingDoubleQuotesForConstantStringError {
+            get {
+                return ResourceManager.GetString("AvoidUsingDoubleQuotesForConstantStringError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to AvoidUsingDoubleQuotesForConstantString.
+        /// </summary>
+        internal static string AvoidUsingDoubleQuotesForConstantStringName {
+            get {
+                return ResourceManager.GetString("AvoidUsingDoubleQuotesForConstantStringName", resourceCulture);
             }
         }
         
@@ -1835,6 +1897,42 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to ReviewUnusedParameter.
+        /// </summary>
+        internal static string ReviewUnusedParameterCommonName {
+            get {
+                return ResourceManager.GetString("ReviewUnusedParameterCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ensure all parameters are used within the same script, scriptblock, or function where they are declared..
+        /// </summary>
+        internal static string ReviewUnusedParameterDescription {
+            get {
+                return ResourceManager.GetString("ReviewUnusedParameterDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The parameter &apos;{0}&apos; has been declared but not used. .
+        /// </summary>
+        internal static string ReviewUnusedParameterError {
+            get {
+                return ResourceManager.GetString("ReviewUnusedParameterError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ReviewUnusedParameter.
+        /// </summary>
+        internal static string ReviewUnusedParameterName {
+            get {
+                return ResourceManager.GetString("ReviewUnusedParameterName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to ScriptDefinition.
         /// </summary>
         internal static string ScriptDefinitionName {
@@ -2393,6 +2491,15 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Use only 1 whitespace between parameter names or values..
+        /// </summary>
+        internal static string UseConsistentWhitespaceErrorSpaceBetweenParameter {
+            get {
+                return ResourceManager.GetString("UseConsistentWhitespaceErrorSpaceBetweenParameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to UseConsistentWhitespace.
         /// </summary>
         internal static string UseConsistentWhitespaceName {
@@ -2402,7 +2509,7 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Use exact casing of cmdlet/function name..
+        ///   Looks up a localized string similar to Use exact casing of cmdlet/function/parameter name..
         /// </summary>
         internal static string UseCorrectCasingCommonName {
             get {
@@ -2411,7 +2518,7 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to For better readability and consistency, use the exact casing of the cmdlet/function..
+        ///   Looks up a localized string similar to For better readability and consistency, use the exact casing of the cmdlet/function/parameter..
         /// </summary>
         internal static string UseCorrectCasingDescription {
             get {
@@ -2420,7 +2527,7 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Cmdlet/Function does not match its exact casing &apos;{0}&apos;..
+        ///   Looks up a localized string similar to Cmdlet/Function/Parameter does not match its exact casing &apos;{0}&apos;..
         /// </summary>
         internal static string UseCorrectCasingError {
             get {
@@ -2614,6 +2721,42 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string UseOutputTypeCorrectlyName {
             get {
                 return ResourceManager.GetString("UseOutputTypeCorrectlyName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use process block for command that accepts input from pipeline..
+        /// </summary>
+        internal static string UseProcessBlockForPipelineCommandCommonName {
+            get {
+                return ResourceManager.GetString("UseProcessBlockForPipelineCommandCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If a command parameter takes its value from the pipeline, the command must use a process block to bind the input objects from the pipeline to that parameter..
+        /// </summary>
+        internal static string UseProcessBlockForPipelineCommandDescription {
+            get {
+                return ResourceManager.GetString("UseProcessBlockForPipelineCommandDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Command accepts pipeline input but has not defined a process block..
+        /// </summary>
+        internal static string UseProcessBlockForPipelineCommandError {
+            get {
+                return ResourceManager.GetString("UseProcessBlockForPipelineCommandError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to UseProcessBlockForPipelineCommand.
+        /// </summary>
+        internal static string UseProcessBlockForPipelineCommandName {
+            get {
+                return ResourceManager.GetString("UseProcessBlockForPipelineCommandName", resourceCulture);
             }
         }
         
@@ -2893,6 +3036,51 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer {
         internal static string UseTypeAtVariableAssignmentName {
             get {
                 return ResourceManager.GetString("UseTypeAtVariableAssignmentName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Use &apos;Using:&apos; scope modifier in RunSpace ScriptBlocks.
+        /// </summary>
+        internal static string UseUsingScopeModifierInNewRunspacesCommonName {
+            get {
+                return ResourceManager.GetString("UseUsingScopeModifierInNewRunspacesCommonName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace {0} with {1}.
+        /// </summary>
+        internal static string UseUsingScopeModifierInNewRunspacesCorrectionDescription {
+            get {
+                return ResourceManager.GetString("UseUsingScopeModifierInNewRunspacesCorrectionDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If a ScriptBlock is intended to be run as a new RunSpace, variables inside it should use &apos;Using:&apos; scope modifier, or be initialized within the ScriptBlock..
+        /// </summary>
+        internal static string UseUsingScopeModifierInNewRunspacesDescription {
+            get {
+                return ResourceManager.GetString("UseUsingScopeModifierInNewRunspacesDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The variable &apos;{0}&apos; is not declared within this ScriptBlock, and is missing the &apos;Using:&apos; scope modifier..
+        /// </summary>
+        internal static string UseUsingScopeModifierInNewRunspacesError {
+            get {
+                return ResourceManager.GetString("UseUsingScopeModifierInNewRunspacesError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to UseUsingScopeModifierInNewRunspaces.
+        /// </summary>
+        internal static string UseUsingScopeModifierInNewRunspacesName {
+            get {
+                return ResourceManager.GetString("UseUsingScopeModifierInNewRunspacesName", resourceCulture);
             }
         }
         

@@ -13,8 +13,11 @@
 |[AvoidGlobalVars](./AvoidGlobalVars.md) | Warning | |
 |[AvoidInvokingEmptyMembers](./AvoidInvokingEmptyMembers.md) | Warning | |
 |[AvoidLongLines](./AvoidLongLines.md) | Warning | |
+|[AvoidOverwritingBuiltInCmdlets](./AvoidOverwritingBuiltInCmdlets.md) | Warning | |
 |[AvoidNullOrEmptyHelpMessageAttribute](./AvoidNullOrEmptyHelpMessageAttribute.md) | Warning | |
 |[AvoidShouldContinueWithoutForce](./AvoidShouldContinueWithoutForce.md) | Warning | |
+|[UseUsingScopeModifierInNewRunspaces](./UseUsingScopeModifierInNewRunspaces.md) | Warning | |
+|[AvoidUsingDoubleQuotesForConstantString](./AvoidUsingDoubleQuotesForConstantString.md) | Warning | Yes |
 |[AvoidUsingCmdletAliases](./AvoidUsingCmdletAliases.md) | Warning | Yes |
 |[AvoidUsingComputerNameHardcoded](./AvoidUsingComputerNameHardcoded.md) | Error | |
 |[AvoidUsingConvertToSecureStringWithPlainText](./AvoidUsingConvertToSecureStringWithPlainText.md) | Error | |
@@ -42,6 +45,7 @@
 |[ProvideCommentHelp](./ProvideCommentHelp.md) | Information | Yes |
 |[ReservedCmdletChar](./ReservedCmdletChar.md) | Error | |
 |[ReservedParams](./ReservedParams.md) | Error | |
+|[ReviewUnusedParameter](./ReviewUnusedParameter.md) | Warning | |
 |[ShouldProcess](./ShouldProcess.md) | Error | |
 |[UseApprovedVerbs](./UseApprovedVerbs.md) | Warning | |
 |[UseBOMForUnicodeEncodedFile](./UseBOMForUnicodeEncodedFile.md) | Warning | |
@@ -50,6 +54,7 @@
 |[UseDeclaredVarsMoreThanAssignments](./UseDeclaredVarsMoreThanAssignments.md) | Warning | |
 |[UseLiteralInitializerForHashtable](./UseLiteralInitializerForHashtable.md) | Warning | |
 |[UseOutputTypeCorrectly](./UseOutputTypeCorrectly.md) | Information | |
+|[UseProcessBlockForPipelineCommand](./UseProcessBlockForPipelineCommand.md) | Warning | |
 |[UsePSCredentialType](./UsePSCredentialType.md) | Warning | |
 |[UseShouldProcessForStateChangingFunctions](./UseShouldProcessForStateChangingFunctions.md) | Warning | |
 |[UseSingularNouns<sup>*</sup>](./UseSingularNouns.md) | Warning | |

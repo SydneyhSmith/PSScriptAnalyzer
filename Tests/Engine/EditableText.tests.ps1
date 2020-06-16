@@ -1,13 +1,15 @@
-$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
-
-$editableTextType = "Microsoft.Windows.PowerShell.ScriptAnalyzer.EditableText"
-$textEditType = "Microsoft.Windows.PowerShell.ScriptAnalyzer.TextEdit"
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+    $editableTextType = "Microsoft.Windows.PowerShell.ScriptAnalyzer.EditableText"
+    $textEditType = "Microsoft.Windows.PowerShell.ScriptAnalyzer.TextEdit"
+}
 
 Describe "EditableText class" {
-    Context "When a sigle edit is given for application" {
+    Context "When a single edit is given for application" {
         It "Should replace in a single line string in the middle" {
             $def = 'This is just a single line.'
             $edit = New-Object -TypeName $textEditType -ArgumentList 1,14,1,22,"one"
@@ -93,7 +95,6 @@ function foo {
 }
 '@
             # Editor does not allow trailing white-spaces, hence this weird construct.
-            $s = ' '
             $newText = @"
     [CmdletBinding()]
 

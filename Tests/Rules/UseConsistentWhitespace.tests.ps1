@@ -1,25 +1,30 @@
-﻿$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
 
-$ruleName = "PSUseConsistentWhitespace"
-$ruleConfiguration = @{
-    Enable          = $true
-    CheckInnerBrace = $false
-    CheckOpenBrace  = $false
-    CheckOpenParen  = $false
-    CheckOperator   = $false
-    CheckPipe       = $false
-    CheckSeparator  = $false
-}
+    $ruleName = "PSUseConsistentWhitespace"
+    $ruleConfiguration = @{
+        Enable          = $true
+        CheckInnerBrace = $false
+        CheckOpenBrace  = $false
+        CheckOpenParen  = $false
+        CheckOperator   = $false
+        CheckPipe       = $false
+        CheckSeparator  = $false
+        CheckParameter  = $false
+    }
 
-$settings = @{
-    IncludeRules = @($ruleName)
-    Rules        = @{
-        PSUseConsistentWhitespace = $ruleConfiguration
+    $settings = @{
+        IncludeRules = @($ruleName)
+        Rules        = @{
+            PSUseConsistentWhitespace = $ruleConfiguration
+        }
     }
 }
+
 
 Describe "UseWhitespace" {
     Context "When an open brace follows a keyword" {
@@ -40,17 +45,27 @@ Describe "UseWhitespace" {
 
         It "Should not find violation if an open brace follows a whitespace" {
             $def = 'if($true) {}'
-            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -Be $null
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
         }
 
         It "Should not find violation if an open brace follows a foreach member invocation" {
             $def = '(1..5).foreach{$_}'
-            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -Be $null
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
         }
 
         It "Should not find violation if an open brace follows a where member invocation" {
             $def = '(1..5).where{$_}'
-            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -Be $null
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
+        }
+
+        It "Should not find violation if an open brace is on the next line" {
+            $def = @'
+if ($true)
+{
+    foo
+}
+'@
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
         }
 
     }
@@ -236,6 +251,7 @@ $x = "abc";
             $ruleConfiguration.CheckOpenParen = $false
             $ruleConfiguration.CheckOperator = $false
             $ruleConfiguration.CheckPipe = $true
+            $ruleConfiguration.CheckPipeForRedundantWhitespace = $false
             $ruleConfiguration.CheckSeparator = $false
         }
 
@@ -245,22 +261,20 @@ $x = "abc";
             Test-CorrectionExtentFromContent $def $violations 1 '' ' '
         }
 
-        It "Should find a violation if there is no space before pipe" {
+        It "Should not find a violation if there is no space before pipe" {
             $def = 'Get-Item| foo'
             $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
             Test-CorrectionExtentFromContent $def $violations 1 '' ' '
         }
 
-        It "Should find a violation if there is one space too much before pipe" {
+        It "Should not find a violation if there is one space too much before pipe" {
             $def = 'Get-Item  | foo'
-            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
-            Test-CorrectionExtentFromContent $def $violations 1 '  ' ' '
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
         }
 
         It "Should find a violation if there is one space too much after pipe" {
             $def = 'Get-Item |  foo'
-            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
-            Test-CorrectionExtentFromContent $def $violations 1 '  ' ' '
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
         }
 
         It "Should not find a violation if there is 1 space before and after a pipe" {
@@ -293,6 +307,51 @@ foo
         }
     }
 
+    Context "CheckPipeForRedundantWhitespace" {
+        BeforeAll {
+            $ruleConfiguration.CheckInnerBrace = $false
+            $ruleConfiguration.CheckOpenBrace = $false
+            $ruleConfiguration.CheckOpenParen = $false
+            $ruleConfiguration.CheckOperator = $false
+            $ruleConfiguration.CheckPipe = $false
+            $ruleConfiguration.CheckPipeForRedundantWhitespace = $true
+            $ruleConfiguration.CheckSeparator = $false
+        }
+
+        It "Should not find a violation if there is no space around pipe" {
+            $def = 'foo|bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
+        }
+
+        It "Should not find a violation if there is exactly one space around pipe" {
+            $def = 'foo | bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -BeNullOrEmpty
+        }
+
+        It "Should find a violation if there is one space too much before pipe" {
+            $def = 'foo  | bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            Test-CorrectionExtentFromContent $def $violations 1 '  ' ' '
+        }
+
+        It "Should find a violation if there is two spaces too much before pipe" {
+            $def = 'foo   | bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            Test-CorrectionExtentFromContent $def $violations 1 '   ' ' '
+        }
+
+        It "Should find a violation if there is one space too much after pipe" {
+            $def = 'foo |  bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            Test-CorrectionExtentFromContent $def $violations 1 '  ' ' '
+        }
+
+        It "Should find a violation if there is two spaces too much after pipe" {
+            $def = 'foo |   bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            Test-CorrectionExtentFromContent $def $violations 1 '   ' ' '
+        }
+    }
 
     Context "CheckInnerBrace" {
         BeforeAll {
@@ -388,4 +447,69 @@ if ($true) { Get-Item `
         }
     }
 
+
+    Context "CheckParameter" {
+        BeforeAll {
+            $ruleConfiguration.CheckInnerBrace = $true
+            $ruleConfiguration.CheckOpenBrace = $false
+            $ruleConfiguration.CheckOpenParen = $false
+            $ruleConfiguration.CheckOperator = $false
+            $ruleConfiguration.CheckPipe = $false
+            $ruleConfiguration.CheckSeparator = $false
+            $ruleConfiguration.CheckParameter = $true
+        }
+
+        It "Should not find no violation when newlines are involved" {
+            $def = {foo -a $b `
+-c d -d $e -f g `
+-h i |
+bar -h i `
+-switch}
+            Invoke-ScriptAnalyzer -ScriptDefinition "$def" -Settings $settings | Should -Be $null
+        }
+
+        It "Should not find no violation if there is always 1 space between parameters except when using colon syntax" {
+            $def = 'foo -bar $baz @splattedVariable -bat -parameterName:$parameterValue'
+            Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings | Should -Be $null
+        }
+
+        It "Should find 1 violation if there is 1 space too much before a parameter" {
+            $def = 'foo  -bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            $violations.Count | Should -Be 1
+            $violations[0].Extent.Text | Should -Be 'foo'
+            $violations[0].SuggestedCorrections[0].Text | Should -Be ([string]::Empty)
+        }
+
+        It "Should find 1 violation if there is 1 space too much before a parameter value" {
+            $def = 'foo  $bar'
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            $violations.Count | Should -Be 1
+            $violations[0].Extent.Text | Should -Be 'foo'
+            $violations[0].SuggestedCorrections[0].Text | Should -Be ([string]::Empty)
+        }
+
+        It "Should fix script to always have 1 space between parameters except when using colon syntax but not by default" {
+            $def = 'foo  -bar   $baz  -ParameterName:  $ParameterValue "$PSScriptRoot\module.psd1"'
+            Invoke-Formatter -ScriptDefinition $def |
+                Should -BeExactly $def -Because 'CheckParameter configuration is not turned on by default (yet) as the setting is new'
+            Invoke-Formatter -ScriptDefinition $def -Settings $settings |
+                Should -BeExactly 'foo -bar $baz -ParameterName:  $ParameterValue "$PSScriptRoot\module.psd1"'
+        }
+
+        It "Should fix script when newlines are involved" {
+            $def = {foo  -a  $b `
+-c  d -d  $e  -f  g `
+-h  i |
+bar  -h  i `
+-switch}
+            $expected = {foo -a $b `
+-c d -d $e -f g `
+-h i |
+bar -h i `
+-switch}
+            Invoke-Formatter -ScriptDefinition "$def" -Settings $settings |
+                Should -Be "$expected"
+        }
+    }
 }

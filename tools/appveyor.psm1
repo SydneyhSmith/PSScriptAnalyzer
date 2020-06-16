@@ -3,9 +3,8 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Implements the AppVeyor 'install' step and installs the required versions of Pester, platyPS and the .Net Core SDK if needed.
-function Invoke-AppVeyorInstall {
-    $requiredPesterVersion = '4.4.4'
+function Install-Pester {
+    $requiredPesterVersion = '5.0.2'
     $pester = Get-Module Pester -ListAvailable | Where-Object { $_.Version -eq $requiredPesterVersion }
     if ($null -eq $pester) {
         if ($null -eq (Get-Module -ListAvailable PowershellGet)) {
@@ -19,16 +18,25 @@ function Invoke-AppVeyorInstall {
             Install-Module -Name Pester -Force -SkipPublisherCheck -Scope CurrentUser -Repository PSGallery
         }
     }
+}
 
-    $platyPSVersion = '0.13.0'
+# Implements the AppVeyor 'install' step and installs the required versions of Pester, platyPS and the .Net Core SDK if needed.
+function Invoke-AppVeyorInstall {
+    param(
+        # For the multi-stage build in Azure DevOps, Pester is not needed for bootstrapping the build environment
+        [switch] $SkipPesterInstallation
+    )
+
+    if (-not $SkipPesterInstallation.IsPresent) { Install-Pester }
+
     if ($null -eq (Get-Module -ListAvailable PowershellGet)) {
         # WMF 4 image build
         Write-Verbose -Verbose "Installing platyPS via nuget"
-        nuget install platyPS -Version $platyPSVersion -source https://www.powershellgallery.com/api/v2 -outputDirectory "$Env:ProgramFiles\WindowsPowerShell\Modules\." -ExcludeVersion
+        nuget install platyPS -source https://www.powershellgallery.com/api/v2 -outputDirectory "$Env:ProgramFiles\WindowsPowerShell\Modules\." -ExcludeVersion
     }
     else {
         Write-Verbose -Verbose "Installing platyPS via Install-Module"
-        Install-Module -Name platyPS -Force -Scope CurrentUser -RequiredVersion $platyPSVersion -Repository PSGallery
+        Install-Module -Name platyPS -Force -Scope CurrentUser -Repository PSGallery
     }
 
     # Do not use 'build.ps1 -bootstrap' option for bootstraping the .Net SDK as it does not work well in CI with the AppVeyor Ubuntu image
@@ -73,6 +81,8 @@ function Invoke-AppveyorTest {
         $CheckoutPath
     )
 
+    Install-Pester
+
     # enforce the language to utf-8 to avoid issues
     $env:LANG = "en_US.UTF-8"
     Write-Verbose -Verbose ("Running tests on PowerShell version " + $PSVersionTable.PSVersion)
@@ -97,36 +107,43 @@ function Invoke-AppveyorTest {
     Write-Verbose -Verbose "module path: ${env:PSModulePath}"
 
     # Set up testing assets
-    $testResultsPath = Join-Path ${CheckoutPath} TestResults.xml
-    $testScripts = "${CheckoutPath}\Tests\Engine","${CheckoutPath}\Tests\Rules","${CheckoutPath}\Tests\Documentation","${CheckoutPath}\PSCompatibilityCollector\Tests"
+    [string[]] $testScripts = @(
+        Join-Path $CheckoutPath 'Tests\Engine'
+        Join-Path $CheckoutPath 'Tests\Rules'
+        Join-Path $CheckoutPath 'Tests\Documentation'
+        Join-Path $CheckoutPath 'PSCompatibilityCollector\Tests'
+    )
 
     # Change culture to Turkish to test that PSSA works well with different locales
     [System.Threading.Thread]::CurrentThread.CurrentCulture = [cultureinfo]::CreateSpecificCulture('tr-TR')
     [System.Threading.Thread]::CurrentThread.CurrentUICulture = [cultureinfo]::CreateSpecificCulture('tr-TR')
 
     # Run all tests
-    $testResults = Invoke-Pester -Script $testScripts -OutputFormat NUnitXml -OutputFile $testResultsPath -PassThru
-
-    # Upload the test results
-    $uploadUrl = "https://ci.appveyor.com/api/testresults/nunit/${env:APPVEYOR_JOB_ID}"
-    Write-Verbose -Verbose "Uploading test results '$testResultsPath' to '${uploadUrl}'"
-    [byte[]]$response = (New-Object 'System.Net.WebClient').UploadFile("$uploadUrl" , $testResultsPath)
-
-    # Throw an error if any tests failed
-    if ($testResults.FailedCount -gt 0) {
-        throw "$($testResults.FailedCount) tests failed."
-    }
+    Import-Module PSScriptAnalyzer
+    Import-Module Pester
+    $configuration = [PesterConfiguration]::Default
+    $configuration.CodeCoverage.Enabled = $false
+    $configuration.Output.Verbosity = 'Normal'
+    $configuration.Run.PassThru = $true
+    $configuration.Run.Path = $testScripts
+    $configuration.TestResult.Enabled = $true
+    Invoke-Pester -Configuration $configuration
 }
 
 # Implements AppVeyor 'on_finish' step
 function Invoke-AppveyorFinish {
+    $uploadUrl = "https://ci.appveyor.com/api/testresults/nunit/${env:APPVEYOR_JOB_ID}"
+    $testResultsPath = Join-Path $pwd TestResults.xml # default when using the -CI switch in Invoke-Pester
+    Write-Verbose -Verbose "Uploading test results '$testResultsPath' to '${uploadUrl}'"
+    $null = (New-Object 'System.Net.WebClient').UploadFile("$uploadUrl" , $testResultsPath)
+
     $stagingDirectory = (Resolve-Path ..).Path
     $zipFile = Join-Path $stagingDirectory "$(Split-Path $pwd -Leaf).zip"
     Add-Type -AssemblyName 'System.IO.Compression.FileSystem'
     [System.IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $pwd 'out'), $zipFile)
     @(
         # add test results as an artifact
-        (Get-ChildItem TestResults.xml)
+        (Get-ChildItem testResults.xml)
         # You can add other artifacts here
         (Get-ChildItem $zipFile)
     ) | ForEach-Object { Push-AppveyorArtifact $_.FullName }

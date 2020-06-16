@@ -1,84 +1,76 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-$script:RuleName = 'PSUseCompatibleSyntax'
+BeforeAll {
+    $script:RuleName = 'PSUseCompatibleSyntax'
+}
 
-$script:ScriptDefinition = @'
-class MyClass
+$testCases = @(
+    @{ Script = '$x = [MyClass]::new()'; Versions = @(3,4) }
+    @{ Script = '$member = "Hi"; $x.$member'; Versions = @() }
+    @{ Script = 'Write-Host "Banana"'; Versions = @() }
+    @{ Script = '[System.VeryInnocuousType]::RunApiMethod($obj)'; Versions = @() }
+    @{ Script = '$y.$methodWithAVeryLongName()'; Versions = @(3) }
+    @{ Script = '$typeExpression::$staticMember'; Versions = @() }
+    @{ Script = '$typeExpression::$dynamicStaticMethodName()'; Versions = @(3) }
+)
+# PS v3/4 won't parse classes or enums
+if ($PSVersionTable.PSVersion.Major -ge 5)
 {
-    [string]$Hi = "Hello"
+    $testCases += @(
+        @{ Script = "class MyClass { }"; Versions = @(3,4) }
+        @{ Script = "enum MyEnum { One; Two }"; Versions = @(3,4) }
+    )
+}
+# PS v6+ won't parse workflows
+if ($PSVersionTable.PSVersion.Major -le 5)
+{
+    $testCases += @(
+        @{ Script = 'workflow Banana { Do-ExpensiveCommandOnAnotherMachine -Argument "Banana" }'; Versions = @(6) }
+    )
+}
+if ($PSVersionTable.PSVersion.Major -ge 7)
+{
+    $testCases += @(
+        @{ Script = '$x = $path ? (Get-Content -Raw $path) : "default"'; Versions = @(3,4,5,6) }
+        @{ Script = '$x ??= 7'; Versions = @(3,4,5,6) }
+        @{ Script = 'git pull origin master && git pull upstream master'; Versions = @(3,4,5,6) }
+    )
 
-    [string]GetString()
+    if ((Get-ExperimentalFeature -Name 'PSNullConditionalOperators').Enabled)
     {
-        return $this.Hi
+        $testCases += @(
+            @{ Script = '${item}?.Invoke()'; Versions = @(3,4,5,6) }
+            @{ Script = '${object}?.Member'; Versions = @(3,4,5,6) }
+        )
+    }
+}
+$testCasesAllPSVersions = foreach ($version in 3, 4, 5, 6) {
+    foreach($testCase in $testCases) {
+        @{
+            Script = $testCase.Script
+            Versions = $testCase.Versions
+            TargetVersion = $version
+        }
     }
 }
 
-enum MyEnum
-{
-    One,
-    Two
-}
-
-$x = [MyClass]::new()
-
-$member = 'Hi'
-Write-Host $x.$member
-
-Write-Output 'Banana'
-
-$method = 'GetString'
-$x.$method()
-
-$enumVal = "One"
-[MyEnum]::$enumVal
-'@
 
 Describe "PSUseCompatibleSyntax" {
-    BeforeAll {
-        $testCases = @(
-            @{ Script = '$x = [MyClass]::new()'; Versions = @(3,4) }
-            @{ Script = '$member = "Hi"; $x.$member'; Versions = @(3) }
-            @{ Script = 'Write-Host "Banana"'; Versions = @() }
-            @{ Script = '[System.VeryInnocuousType]::RunApiMethod($obj)'; Versions = @() }
-            @{ Script = '$y.$methodWithAVeryLongName()'; Versions = @(3) }
-            @{ Script = '$typeExpression::$staticMember'; Versions = @(3) }
-            @{ Script = '$typeExpression::$dynamicStaticMethodName()'; Versions = @(3) }
-        )
+    It "Finds issues for PSv<TargetVersion> in '<Script>'" -TestCases $testCasesAllPSVersions {
+        param([string]$Script, $Versions, $TargetVersion)
 
-        # PS v3/4 won't parse classes or enums
-        if ($PSVersionTable.PSVersion.Major -ge 5)
-        {
-            $testCases += @(
-                @{ Script = "class MyClass { }"; Versions = @(3,4) }
-                @{ Script = "enum MyEnum { One; Two }"; Versions = @(3,4) }
-            )
+        $diagnostics = Invoke-ScriptAnalyzer -ScriptDefinition $Script -IncludeRule PSUseCompatibleSyntax -Settings @{
+            Rules = @{ PSUseCompatibleSyntax = @{ Enable = $true; TargetVersions = @("$TargetVersion.0") } }
         }
 
-        # PS v6+ won't parse workflows
-        if ($PSVersionTable.PSVersion.Major -le 5)
+        if ($Versions -contains $TargetVersion)
         {
-            $testCases += @(
-                @{ Script = 'workflow Banana { Do-ExpensiveCommandOnAnotherMachine -Argument "Banana" }'; Versions = @(6) }
-            )
+            $diagnostics.Count | Should -Be 1
         }
-    }
-
-    foreach ($v in 3,4,5,6)
-    {
-        It "Finds issues for PSv$v in '<Script>'" -TestCases $testCases {
-            param([string]$Script, $Versions)
-
-            $diagnostics = Invoke-ScriptAnalyzer -ScriptDefinition $Script -IncludeRule PSUseCompatibleSyntax -Settings @{ Rules = @{ PSUseCompatibleSyntax = @{ Enable = $true; TargetVersions = @("$v.0") } } }
-
-            if ($Versions -contains $v)
-            {
-                $diagnostics.Count | Should -Be 1
-            }
-            else
-            {
-                $diagnostics.Count | Should -Be 0
-            }
+        else
+        {
+            $diagnostics.Count | Should -Be 0
         }
     }
 

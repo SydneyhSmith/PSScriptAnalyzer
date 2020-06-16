@@ -114,7 +114,7 @@ function Start-DocumentationBuild
     {
         throw "Cannot find markdown documentation folder."
     }
-    Import-Module platyPS
+    Import-Module platyPS -Verbose:$false
     if ( -not (Test-Path $outputDocsPath)) {
         $null = New-Item -Type Directory -Path $outputDocsPath -Force
     }
@@ -144,15 +144,15 @@ function Start-ScriptAnalyzerBuild
     param (
         [switch]$All,
 
-        # Note that 6 should also be chosen for PowerShell7 as both implement netstandard2.0
-        # and we do not use features from netstandard2.1
-        [ValidateRange(3, 6)]
+        [ValidateRange(3, 7)]
         [int]$PSVersion = $PSVersionTable.PSVersion.Major,
 
         [ValidateSet("Debug", "Release")]
         [string]$Configuration = "Debug",
 
-        [switch]$Documentation
+        [switch]$Documentation,
+
+        [switch]$Catalog
         )
 
     BEGIN {
@@ -165,6 +165,10 @@ function Start-ScriptAnalyzerBuild
             $foundVersion = Get-InstalledCLIVersion
             Write-Warning "No suitable dotnet CLI found, requires version '$requiredVersion' found only '$foundVersion'"
         }
+        $verboseWanted = $false
+        if ( $PSBoundParameters['Verbose'] ) {
+            $verboseWanted = $PSBoundParameters['Verbose'].ToBool()
+        }
     }
     END {
 
@@ -172,26 +176,34 @@ function Start-ScriptAnalyzerBuild
         $documentationFileExists = Test-Path (Join-Path $PSScriptRoot 'out\PSScriptAnalyzer\en-us\Microsoft.Windows.PowerShell.ScriptAnalyzer.dll-Help.xml')
         if ( $Documentation -or -not $documentationFileExists )
         {
-            Start-DocumentationBuild
+            Write-Verbose -Verbose:$verboseWanted -Message "Start-DocumentationBuild"
+            Start-DocumentationBuild -Verbose:$verboseWanted
         }
 
         if ( $All )
         {
             # Build all the versions of the analyzer
-            foreach($psVersion in 3..6) {
-                Start-ScriptAnalyzerBuild -Configuration $Configuration -PSVersion $psVersion
+            foreach($psVersion in 3..7) {
+                Start-ScriptAnalyzerBuild -Configuration $Configuration -PSVersion $psVersion -Verbose:$verboseWanted
+            }
+            if ( $Catalog ) {
+                New-Catalog -Location $script:destinationDir
             }
             return
         }
 
         if (-not $profilesCopied)
         {
+            Write-Verbose -Verbose:$verboseWanted -Message "Copy-CompatibilityProfiles"
             Copy-CompatibilityProfiles
             # Set the variable in the caller's scope, so this will only happen once
             Set-Variable -Name profilesCopied -Value $true -Scope 1
         }
 
-        if ($PSVersion -ge 6) {
+        if ($PSVersion -eq 7) {
+            $framework = 'netcoreapp3.1'
+        }
+        elseif ($PSVersion -eq 6) {
             $framework = 'netstandard2.0'
         }
         else {
@@ -199,7 +211,7 @@ function Start-ScriptAnalyzerBuild
         }
 
         # build the appropriate assembly
-        if ($PSVersion -match "[34]" -and $Framework -eq "core")
+        if ($PSVersion -match "[34]" -and $Framework -ne "net452")
         {
             throw ("ScriptAnalyzer for PS version '{0}' is not applicable to {1} framework" -f $PSVersion,$Framework)
         }
@@ -231,7 +243,11 @@ function Start-ScriptAnalyzerBuild
             }
             6
             {
-                $destinationDirBinaries = "$script:destinationDir\coreclr"
+                $destinationDirBinaries = "$script:destinationDir\PSv6"
+            }
+            7
+            {
+                $destinationDirBinaries = "$script:destinationDir\PSv7"
             }
             default
             {
@@ -239,18 +255,33 @@ function Start-ScriptAnalyzerBuild
             }
         }
 
-        $config = "PSV${PSVersion}${Configuration}"
+        $buildConfiguration = $Configuration
+        if ((3, 4, 6, 7) -contains $PSVersion) {
+            $buildConfiguration = "PSV${PSVersion}${Configuration}"
+        }
 
         # Build ScriptAnalyzer
         # The Rules project has a dependency on the Engine therefore just building the Rules project is enough
         try {
             Push-Location $projectRoot/Rules
-            Write-Progress "Building ScriptAnalyzer for PSVersion '$PSVersion' using framework '$framework' and configuration '$Configuration'"
+            $message = "Building ScriptAnalyzer for PSVersion '$PSVersion' using framework '$framework' and configuration '$Configuration'"
+            Write-Verbose -Verbose:$verboseWanted -Message "$message"
+            Write-Progress "$message"
             if ( -not $script:DotnetExe ) {
                 $script:DotnetExe = Get-DotnetExe
             }
-            $buildOutput = & $script:DotnetExe build --framework $framework --configuration "$config" 2>&1
+            $dotnetArgs = "build",
+                "--framework",
+                $framework,
+                "--configuration",
+                "$buildConfiguration"
+            if ( $env:TF_BUILD ) {
+                $dotnetArgs += "--output"
+                $dotnetArgs += "${PSScriptRoot}\bin\${buildConfiguration}\${framework}"
+            }
+            $buildOutput = & $script:DotnetExe $dotnetArgs 2>&1
             if ( $LASTEXITCODE -ne 0 ) { throw "$buildOutput" }
+            Write-Verbose -Verbose:$verboseWanted -message "$buildOutput"
         }
         catch {
             Write-Warning $_
@@ -263,20 +294,53 @@ function Start-ScriptAnalyzerBuild
 
         Publish-File $itemsToCopyCommon $script:destinationDir
 
-        $itemsToCopyBinaries = @(
-            "$projectRoot\Engine\bin\${config}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.dll",
-            "$projectRoot\Rules\bin\${config}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules.dll"
-            "$projectRoot\Rules\bin\${config}\${framework}\Microsoft.PowerShell.CrossCompatibility.dll"
-            )
+        if ( $env:TF_BUILD ) {
+            $itemsToCopyBinaries = @(
+                "$projectRoot\bin\${buildConfiguration}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.dll",
+                "$projectRoot\bin\${buildConfiguration}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules.dll"
+                "$projectRoot\bin\${buildConfiguration}\${framework}\Microsoft.PowerShell.CrossCompatibility.dll"
+                )
+        }
+        else {
+            $itemsToCopyBinaries = @(
+                "$projectRoot\Engine\bin\${buildConfiguration}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.dll",
+                "$projectRoot\Rules\bin\${buildConfiguration}\${Framework}\Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules.dll"
+                "$projectRoot\Rules\bin\${buildConfiguration}\${framework}\Microsoft.PowerShell.CrossCompatibility.dll"
+                )
+        }
         Publish-File $itemsToCopyBinaries $destinationDirBinaries
 
         $settingsFiles = Get-Childitem "$projectRoot\Engine\Settings" | ForEach-Object -MemberName FullName
         Publish-File $settingsFiles (Join-Path -Path $script:destinationDir -ChildPath Settings)
 
         if ($framework -eq 'net452') {
-            Copy-Item -path "$projectRoot\Rules\bin\${config}\${framework}\Newtonsoft.Json.dll" -Destination $destinationDirBinaries
+            if ( $env:TF_BUILD ) {
+                $nsoft =  "$projectRoot\bin\${buildConfiguration}\${framework}\Newtonsoft.Json.dll"
+            }
+            else {
+                $nsoft =  "$projectRoot\Rules\bin\${buildConfiguration}\${framework}\Newtonsoft.Json.dll"
+            }
+            Copy-Item -path $nsoft -Destination $destinationDirBinaries
         }
 
+        Pop-Location
+    }
+}
+
+function New-Catalog
+{
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseCompatibleCommands', '')]
+    param ( [Parameter()]$Location )
+    $newFileCatalog = Get-Command -ErrorAction SilentlyContinue New-FileCatalog
+    if ($null -eq $newFileCatalog) {
+        Write-Warning "New-FileCatalog not found, not creating catalog"
+        return
+    }
+    try {
+        Push-Location $Location
+        New-FileCatalog -CatalogFilePath PSScriptAnalyzer.cat -Path .
+    }
+    finally {
         Pop-Location
     }
 }
@@ -286,7 +350,7 @@ function Start-ScriptAnalyzerBuild
 function Test-ScriptAnalyzer
 {
     [CmdletBinding()]
-    param ( [Parameter()][switch]$InProcess, [switch]$ShowAll )
+    param ( [switch] $InProcess )
 
     END {
         # versions 3 and 4 don't understand versioned module paths, so we need to rename the directory of the version to
@@ -323,14 +387,7 @@ function Test-ScriptAnalyzer
             }
             $savedModulePath = $env:PSModulePath
             $env:PSModulePath = "${testModulePath}{0}${env:PSModulePath}" -f [System.IO.Path]::PathSeparator
-            if ($ShowAll)
-            {
-                $scriptBlock = [scriptblock]::Create("Invoke-Pester -Path $testScripts -OutputFormat NUnitXml -OutputFile $testResultsFile")
-            }
-            else
-            {
-                $scriptBlock = [scriptblock]::Create("Invoke-Pester -Path $testScripts -OutputFormat NUnitXml -OutputFile $testResultsFile -Show Describe,Summary,Failed")
-            }
+            $scriptBlock = [scriptblock]::Create("Import-Module PSScriptAnalyzer; Invoke-Pester -Path $testScripts")
             if ( $InProcess ) {
                 & $scriptBlock
             }
@@ -361,7 +418,7 @@ function Get-TestResults
 # it's not a filter of the results of Get-TestResults because this is faster
 function Get-TestFailures
 {
-    param ( $logfile = (Join-Path -Path ${projectRoot} -ChildPath TestResults.xml) )
+    param ( $logfile = (Join-Path -Path ${projectRoot} -ChildPath testResults.xml) )
     $logPath = (Resolve-Path $logfile).Path
     $results = [xml](Get-Content $logPath)
     $results.SelectNodes(".//test-case[@result='Failure']")
@@ -534,7 +591,6 @@ function Get-InstalledCLIVersion {
         # earlier versions of dotnet do not support --list-sdks, so we'll check the output
         # and use dotnet --version as a fallback
         $sdkList = & $script:DotnetExe --list-sdks 2>&1
-        $sdkList = "Unknown option"
         if ( $sdkList -match "Unknown option" ) {
             $installedVersions = & $script:DotnetExe --version 2>$null
         }
@@ -618,9 +674,15 @@ function Get-DotnetExe
         # it's possible that there are multiples. Take the highest version we find
         # the problem is that invoking dotnet on a version which is lower than the specified
         # version in global.json will produce an error, so we can only take the dotnet which executes
+        #
+        # dotnet --version has changed its output, so we have to work much harder to determine what's installed.
+        # dotnet --version can now emit a list of installed sdks as output *and* an error if the global.json
+        # file points to a version of the sdk which is *not* installed. However, the format of the new list
+        # with --version has a couple of spaces at the beginning of the line, so we need to be resilient
+        # against that.
         $latestDotnet = $discoveredDotNet |
             Where-Object { try { & $_ --version 2>$null } catch { } } |
-            Sort-Object { $pv = ConvertTo-PortableVersion (& $_ --version 2>$null); "$pv" } |
+            Sort-Object { $pv = ConvertTo-PortableVersion (& $_ --version 2>$null| %{$_.Trim().Split()[0]}); "$pv" } |
             Select-Object -Last 1
         if ( $latestDotnet ) {
             $script:DotnetExe = $latestDotnet

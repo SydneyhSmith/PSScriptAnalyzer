@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+
 Describe "UseCorrectCasing" {
     It "corrects case of simple cmdlet" {
         Invoke-Formatter 'get-childitem' | Should -Be 'Get-ChildItem'
@@ -54,4 +57,20 @@ Describe "UseCorrectCasing" {
         $scriptDefinition = ". $uncPath"
         Invoke-Formatter $scriptDefinition | Should -Be $scriptDefinition
     }
+
+    It "Corrects parameter casing" {
+        function Invoke-DummyFunction ($ParameterName) { }
+
+        Invoke-Formatter 'Invoke-DummyFunction -parametername $parameterValue' |
+            Should -Be 'Invoke-DummyFunction -ParameterName $parameterValue'
+        Invoke-Formatter 'Invoke-DummyFunction -parametername:$parameterValue' |
+            Should -Be 'Invoke-DummyFunction -ParameterName:$parameterValue'
+        Invoke-Formatter 'Invoke-DummyFunction -parametername: $parameterValue' |
+            Should -Be 'Invoke-DummyFunction -ParameterName: $parameterValue'
+    }
+
+    It "Should not throw when using parameter name that does not exist" {
+        Invoke-Formatter 'Get-Process -NonExistingParameterName' -ErrorAction Stop
+    }
+
 }

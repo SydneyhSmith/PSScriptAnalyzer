@@ -2,7 +2,9 @@
 
 <img src="logo.png" width="180">
 
-[![Build status](https://ci.appveyor.com/api/projects/status/h5mot3vqtvxw5d7l/branch/master?svg=true)](https://ci.appveyor.com/project/PowerShell/psscriptanalyzer/branch/master) [![Join the chat at https://gitter.im/PowerShell/PSScriptAnalyzer](https://badges.gitter.im/PowerShell/PSScriptAnalyzer.svg)](https://gitter.im/PowerShell/PSScriptAnalyzer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://dev.azure.com/powershell/psscriptanalyzer/_apis/build/status/psscriptanalyzer-ci?branchName=master)](https://dev.azure.com/powershell/psscriptanalyzer/_build/latest?definitionId=80&branchName=master)
+[![Build status](https://ci.appveyor.com/api/projects/status/h5mot3vqtvxw5d7l/branch/master?svg=true)](https://ci.appveyor.com/project/PowerShell/psscriptanalyzer/branch/master)
+[![Join the chat at https://gitter.im/PowerShell/PSScriptAnalyzer](https://badges.gitter.im/PowerShell/PSScriptAnalyzer.svg)](https://gitter.im/PowerShell/PSScriptAnalyzer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Table of Contents
 =================
@@ -35,7 +37,7 @@ Table of Contents
 
 Introduction
 ============
-PSScriptAnalyzer is a static code checker for Windows PowerShell modules and scripts. PSScriptAnalyzer checks the quality of Windows PowerShell code by running a set of rules.
+PSScriptAnalyzer is a static code checker for PowerShell modules and scripts. PSScriptAnalyzer checks the quality of PowerShell code by running a set of rules.
 The rules are based on PowerShell best practices identified by PowerShell Team and the community. It generates DiagnosticResults (errors and warnings) to inform users about potential
 code defects and suggests possible solutions for improvements.
 
@@ -76,7 +78,7 @@ Exit
 #### Supported PowerShell Versions and Platforms
 
 - Windows PowerShell 3.0 or greater
-- PowerShell Core 6.1.0 or greater on Windows/Linux/macOS
+- PowerShell Core 6.2 or greater on Windows/Linux/macOS
 - Docker (tested only using Docker Desktop on Windows 10 1809)
   - PowerShell 6 Windows Image tags from [mcr.microsoft.com/powershell](https://hub.docker.com/r/microsoft/powershell). Example (1 warning gets produced by `Save-Module` but can be ignored):
 
@@ -105,8 +107,9 @@ Note: the PSScriptAnalyzer Chocolatey package is provided and supported by the c
 
 #### Requirements
 
-* [.NET Core 2.2.104 SDK](https://www.microsoft.com/net/download/dotnet-core/2.2#sdk-2.2.104) or newer patch release
-* [PlatyPS 0.13.0 or greater](https://github.com/PowerShell/platyPS/releases)
+* [.NET Core 3.1.102 SDK](https://www.microsoft.com/net/download/dotnet-core/3.1#sdk-3.1.102) or newer patch release
+* [Pester v5 PowerShell module, available on PowerShell Gallery](https://github.com/pester/Pester)
+* [PlatyPS PowerShell module, available on PowerShell Gallery](https://github.com/PowerShell/platyPS/releases)
 * Optionally but recommended for development: [Visual Studio 2017/2019](https://www.visualstudio.com/downloads/)
 
 #### Steps
@@ -227,13 +230,13 @@ PSUseApprovedVerbs Warning             1    The cmdlet 'eliminate-file' uses an
 Suppressing Rules
 =================
 
-You can suppress a rule by decorating a script/function or script/function parameter with .NET's [SuppressMessageAttribute](https://msdn.microsoft.com/en-us/library/system.diagnostics.codeanalysis.suppressmessageattribute.aspx).
+You can suppress a rule by decorating a script/function or script/function parameter with .NET's [SuppressMessageAttribute](https://docs.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.suppressmessageattribute).
 `SuppressMessageAttribute`'s constructor takes two parameters: a category and a check ID. Set the `categoryID` parameter to the name of the rule you want to suppress and set the `checkID` parameter to a null or empty string. You can optionally add a third named parameter with a justification for suppressing the message:
 
 ``` PowerShell
 function SuppressMe()
 {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSProvideCommentHelp", "", Justification="Just an example")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSProvideCommentHelp', '', Justification='Just an example')]
     param()
 
     Write-Verbose -Message "I'm making a difference!"
@@ -247,8 +250,8 @@ To suppress a message on a specific parameter, set the `SuppressMessageAttribute
 ``` PowerShell
 function SuppressTwoVariables()
 {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSProvideDefaultParameterValue", "b")]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSProvideDefaultParameterValue", "a")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSProvideDefaultParameterValue', 'b')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSProvideDefaultParameterValue', 'a')]
     param([string]$a, [int]$b)
     {
     }
@@ -260,7 +263,7 @@ Use the `SuppressMessageAttribute`'s `Scope` property to limit rule suppression 
 Use the value `Function` to suppress violations on all functions within the attribute's scope. Use the value `Class` to suppress violations on all classes within the attribute's scope:
 
 ``` PowerShell
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSProvideCommentHelp", "", Scope="Function")]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSProvideCommentHelp', '', Scope='Function')]
 param(
 )
 
@@ -297,13 +300,13 @@ function start-bam {
 
 Suppress violations in all the functions:
 ``` PowerShell
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", Scope="Function", Target="*")]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', Scope='Function', Target='*')]
 Param()
 ```
 
 Suppress violation in `start-bar`, `start-baz` and `start-bam` but not in `start-foo`:
 ``` PowerShell
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSAvoidUsingWriteHost", Scope="Function", Target="start-b*")]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', Scope='Function', Target='start-b*')]
 Param()
 ```
 
@@ -342,7 +345,7 @@ that does not output an Error or Warning diagnostic record.
 Then invoke that settings file when using `Invoke-ScriptAnalyzer`:
 
 ``` PowerShell
-Invoke-ScriptAnalyzer -Path MyScript.ps1 -Setting PSScriptAnalyzerSettings.psd1
+Invoke-ScriptAnalyzer -Path MyScript.ps1 -Settings PSScriptAnalyzerSettings.psd1
 ```
 
 The next example selects a few rules to execute instead of all the default rules.
@@ -355,9 +358,9 @@ The next example selects a few rules to execute instead of all the default rules
 }
 ```
 
-Then invoke that settings file when using:
+Then invoke that settings file:
 ``` PowerShell
-Invoke-ScriptAnalyzer -Path MyScript.ps1 -Setting ScriptAnalyzerSettings.psd1
+Invoke-ScriptAnalyzer -Path MyScript.ps1 -Settings PSScriptAnalyzerSettings.psd1
 ```
 
 ## Implicit

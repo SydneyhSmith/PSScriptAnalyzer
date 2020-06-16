@@ -1,20 +1,24 @@
-﻿$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
-Import-Module (Join-Path $testRootDirectory 'PSScriptAnalyzerTestHelper.psm1')
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-$missingMessage = "The member 'ModuleVersion' is not present in the module manifest."
-$missingMemberRuleName = "PSMissingModuleManifestField"
-$violationFilepath = Join-Path $directory "TestBadModule\TestBadModule.psd1"
-$violations = Invoke-ScriptAnalyzer $violationFilepath | Where-Object {$_.RuleName -eq $missingMemberRuleName}
-$noViolations = Invoke-ScriptAnalyzer $directory\TestGoodModule\TestGoodModule.psd1 | Where-Object {$_.RuleName -eq $missingMemberRuleName}
-$noHashtableFilepath = Join-Path $directory "TestBadModule\NoHashtable.psd1"
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory 'PSScriptAnalyzerTestHelper.psm1')
+
+    $missingMessage = "The member 'ModuleVersion' is not present in the module manifest."
+    $missingMemberRuleName = "PSMissingModuleManifestField"
+    $violationFilepath = Join-Path $PSScriptRoot "TestBadModule\TestBadModule.psd1"
+    $violations = Invoke-ScriptAnalyzer $violationFilepath | Where-Object { $_.RuleName -eq $missingMemberRuleName }
+    $noViolations = Invoke-ScriptAnalyzer $PSScriptRoot\TestGoodModule\TestGoodModule.psd1 | Where-Object { $_.RuleName -eq $missingMemberRuleName }
+    $noHashtableFilepath = Join-Path $PSScriptRoot "TestBadModule\NoHashtable.psd1"
+}
 
 Describe "MissingRequiredFieldModuleManifest" {
     BeforeAll {
-        Import-Module (Join-Path $directory "PSScriptAnalyzerTestHelper.psm1") -Force
+        Import-Module (Join-Path $PSScriptRoot "PSScriptAnalyzerTestHelper.psm1") -Force
     }
 
-    AfterAll{
+    AfterAll {
         Remove-Module PSScriptAnalyzerTestHelper
     }
 
@@ -27,21 +31,18 @@ Describe "MissingRequiredFieldModuleManifest" {
             $violations.Message | Should -Match $missingMessage
         }
 
-        $numExpectedCorrections = 1
-        It "has $numExpectedCorrections suggested corrections" {
-            $violations.SuggestedCorrections.Count | Should -Be $numExpectedCorrections
+        It "has correct suggested corrections count" {
+            $violations.SuggestedCorrections.Count | Should -Be 1
         }
 
-    # On Linux, mismatch in line endings cause this to fail
-	It "has the right suggested correction" -Skip:($IsLinux) {
-	   $expectedText = @'
-# Version number of this module.
-ModuleVersion = '1.0.0.0'
-'@
-            $violations[0].SuggestedCorrections[0].Text | Should -Match $expectedText
+        It "has the right suggested correction" {
+            $expectedText = [System.Environment]::NewLine + '# Version number of this module.' +
+            [System.Environment]::NewLine + "ModuleVersion = '1.0.0.0'" + [System.Environment]::NewLine
+
+            $violations[0].SuggestedCorrections[0].Text | Should -BeExactly $expectedText
             Get-ExtentText $violations[0].SuggestedCorrections[0] $violationFilepath | Should -BeNullOrEmpty
+        }
     }
-}
 
     Context "When there are no violations" {
         It "returns no violations" {
@@ -57,32 +58,32 @@ ModuleVersion = '1.0.0.0'
 
     Context "Validate the contents of a .psd1 file" {
         It "detects a valid module manifest file" {
-            $filepath = Join-Path $directory "TestManifest/ManifestGood.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/ManifestGood.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"5.0.0") | Should -BeTrue
         }
 
         It "detects a .psd1 file which is not module manifest" {
-            $filepath = Join-Path $directory "TestManifest/PowerShellDataFile.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/PowerShellDataFile.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"5.0.0") | Should -BeFalse
         }
 
         It "detects valid module manifest file for PSv5" {
-            $filepath = Join-Path $directory "TestManifest/ManifestGoodPsv5.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/ManifestGoodPsv5.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"5.0.0") | Should -BeTrue
         }
 
         It "does not validate PSv5 module manifest file for PSv3 check" {
-            $filepath = Join-Path $directory "TestManifest/ManifestGoodPsv5.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/ManifestGoodPsv5.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"3.0.0") | Should -BeFalse
         }
 
         It "detects valid module manifest file for PSv4" {
-            $filepath = Join-Path $directory "TestManifest/ManifestGoodPsv4.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/ManifestGoodPsv4.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"4.0.0") | Should -BeTrue
         }
 
         It "detects valid module manifest file for PSv3" {
-            $filepath = Join-Path $directory "TestManifest/ManifestGoodPsv3.psd1"
+            $filepath = Join-Path $PSScriptRoot "TestManifest/ManifestGoodPsv3.psd1"
             [Microsoft.Windows.PowerShell.ScriptAnalyzer.Helper]::IsModuleManifest($filepath, [version]"3.0.0") | Should -BeTrue
         }
     }
@@ -90,11 +91,10 @@ ModuleVersion = '1.0.0.0'
     Context "When given a non module manifest file" {
         It "does not flag a PowerShell data file" {
             Invoke-ScriptAnalyzer `
-                -Path "$directory/TestManifest/PowerShellDataFile.psd1" `
+                -Path "$PSScriptRoot/TestManifest/PowerShellDataFile.psd1" `
                 -IncludeRule "PSMissingModuleManifestField" `
                 -OutVariable ruleViolation
             $ruleViolation.Count | Should -Be 0
         }
     }
 }
-

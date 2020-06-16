@@ -1,12 +1,15 @@
-﻿$violationMessage = "'cls' is an alias of 'Clear-Host'. Alias can introduce possible problems and make scripts hard to maintain. Please consider changing alias to its full content."
-$violationName = "PSAvoidUsingCmdletAliases"
-$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
-$violationFilepath = Join-Path $directory 'AvoidUsingAlias.ps1'
-$violations = Invoke-ScriptAnalyzer $violationFilepath | Where-Object {$_.RuleName -eq $violationName}
-$noViolations = Invoke-ScriptAnalyzer $directory\AvoidUsingAliasNoViolations.ps1 | Where-Object {$_.RuleName -eq $violationName}
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+BeforeAll {
+    $violationMessage = "'cls' is an alias of 'Clear-Host'. Alias can introduce possible problems and make scripts hard to maintain. Please consider changing alias to its full content."
+    $violationName = "PSAvoidUsingCmdletAliases"
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    $violationFilepath = Join-Path $PSScriptRoot 'AvoidUsingAlias.ps1'
+    $violations = Invoke-ScriptAnalyzer $violationFilepath | Where-Object {$_.RuleName -eq $violationName}
+    $noViolations = Invoke-ScriptAnalyzer $PSScriptRoot\AvoidUsingAliasNoViolations.ps1 | Where-Object {$_.RuleName -eq $violationName}
+    Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+}
 
 Describe "AvoidUsingAlias" {
     Context "When there are violations" {
@@ -90,7 +93,7 @@ Configuration MyDscConfiguration {
 
         It "honors the whitelist provided through settings file" {
             # even though join-path returns string, if we do not use tostring, then invoke-scriptanalyzer cannot cast it to string type
-            $settingsFilePath = (Join-Path $directory (Join-Path 'TestSettings' 'AvoidAliasSettings.psd1')).ToString()
+            $settingsFilePath = (Join-Path $PSScriptRoot (Join-Path 'TestSettings' 'AvoidAliasSettings.psd1')).ToString()
             $violations = Invoke-ScriptAnalyzer -ScriptDefinition $whiteListTestScriptDef -Settings $settingsFilePath -IncludeRule $violationName
             $violations.Count | Should -Be 1
         }

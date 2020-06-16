@@ -1,8 +1,10 @@
-﻿$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
+﻿# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
-
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory "PSScriptAnalyzerTestHelper.psm1")
+}
 
 Describe "UseConsistentIndentation" {
     BeforeAll {
@@ -158,6 +160,18 @@ foo |
             Invoke-FormatterAssertion $scriptDefinition $expected 3 $settings
         }
 
+        It "When a comment is after a pipeline and before the newline " {
+            $scriptDefinition = @'
+foo | # comment
+bar
+'@
+            $expected = @'
+foo | # comment
+    bar
+'@
+            Invoke-FormatterAssertion $scriptDefinition $expected 1 $settings
+        }
+
         It "Should find a violation if a pipleline element is not indented correctly" {
             $def = @'
 get-process |
@@ -225,10 +239,105 @@ baz
             Test-CorrectionExtentFromContent @params
         }
 
+        It "Should indent hashtable correctly using <PipelineIndentation> option" -TestCases @(
+            @{
+                PipelineIndentation = 'IncreaseIndentationForFirstPipeline'
+            },
+            @{
+                PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline'
+            },
+            @{
+                PipelineIndentation = 'NoIndentation'
+            }
+            @{
+                PipelineIndentation = 'None'
+            }
+        ) {
+            Param([string] $PipelineIndentation)
+            $scriptDefinition = @'
+@{
+        foo = "value1"
+    bar = "value2"
+}
+'@
+            $settings = @{
+                IncludeRules = @('PSUseConsistentIndentation')
+                Rules = @{ PSUseConsistentIndentation = @{ Enable = $true; PipelineIndentation = $PipelineIndentation } }
+            }
+            Invoke-Formatter -Settings $settings -ScriptDefinition $scriptDefinition | Should -Be @'
+@{
+    foo = "value1"
+    bar = "value2"
+}
+'@
+
+        }
+
+        It "Should indent pipelines correctly using <PipelineIndentation> option" -TestCases @(
+            @{
+                PipelineIndentation = 'IncreaseIndentationForFirstPipeline'
+                ExpectCorrection    = $true
+            },
+            @{
+                PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline'
+                ExpectCorrection    = $true
+            },
+            @{
+                PipelineIndentation = 'NoIndentation'
+                ExpectCorrection    = $false
+            }
+            @{
+                PipelineIndentation = 'None'
+                ExpectCorrection    = $false
+            }
+        ) {
+            Param([string] $PipelineIndentation, [bool] $ExpectCorrection)
+            $def = @'
+foo | bar |
+baz
+'@
+            $settings.Rules.PSUseConsistentIndentation.PipelineIndentation = $PipelineIndentation
+            $violations = Invoke-ScriptAnalyzer -ScriptDefinition $def -Settings $settings
+            if ($ExpectCorrection) {
+                $violations.Count | Should -Be 1
+                $params = @{
+                    RawContent       = $def
+                    DiagnosticRecord = $violations[0]
+                    CorrectionsCount = 1
+                    ViolationText    = "baz"
+                    CorrectionText   = $indentationUnit * $indentationSize + 'baz'
+                }
+                Test-CorrectionExtentFromContent @params
+            }
+            else
+            {
+                $violations | Should -BeNullOrEmpty
+            }
+        }
+
+        It 'Should preserve script when using PipelineIndentation None' -TestCases @(
+            @{ IdempotentScriptDefinition = @'
+foo |
+bar
+'@
+            }
+            @{ IdempotentScriptDefinition = @'
+foo |
+    bar
+'@
+            }
+            ) {
+        param ($IdempotentScriptDefinition)
+
+        $settings.Rules.PSUseConsistentIndentation.PipelineIndentation = 'None'
+        Invoke-Formatter -ScriptDefinition $IdempotentScriptDefinition -Settings $settings | Should -Be $idempotentScriptDefinition
+    }
+
         It "Should preserve script when using PipelineIndentation <PipelineIndentation>" -TestCases @(
                 @{ PipelineIndentation = 'IncreaseIndentationForFirstPipeline' }
                 @{ PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline' }
                 @{ PipelineIndentation = 'NoIndentation' }
+                @{ PipelineIndentation = 'None' }
                 ) {
             param ($PipelineIndentation)
             $idempotentScriptDefinition = @'
@@ -246,6 +355,7 @@ function hello {
             @{ PipelineIndentation = 'IncreaseIndentationForFirstPipeline' }
             @{ PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline' }
             @{ PipelineIndentation = 'NoIndentation' }
+            @{ PipelineIndentation = 'None' }
             ) {
         param ($PipelineIndentation)
         $idempotentScriptDefinition = @'
@@ -264,6 +374,7 @@ function foo {
         @{ PipelineIndentation = 'IncreaseIndentationForFirstPipeline' }
         @{ PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline' }
         @{ PipelineIndentation = 'NoIndentation' }
+        @{ PipelineIndentation = 'None' }
         ) {
     param ($PipelineIndentation)
     $idempotentScriptDefinition = @'
@@ -277,6 +388,24 @@ Describe 'describe' {
     $settings.Rules.PSUseConsistentIndentation.PipelineIndentation = $PipelineIndentation
     Invoke-Formatter -ScriptDefinition $idempotentScriptDefinition -Settings $settings | Should -Be $idempotentScriptDefinition
 }
+        It "Should preserve script when using PipelineIndentation <PipelineIndentation> for complex multi-line pipeline" -TestCases @(
+            @{ PipelineIndentation = 'IncreaseIndentationForFirstPipeline' }
+            @{ PipelineIndentation = 'IncreaseIndentationAfterEveryPipeline' }
+            @{ PipelineIndentation = 'NoIndentation' }
+            @{ PipelineIndentation = 'None' }
+        ) {
+            param ($PipelineIndentation)
+            $idempotentScriptDefinition = @'
+function foo {
+    bar | baz {
+        Get-Item
+    } | Invoke-Item
+    $iShouldStayAtTheSameIndentationLevel
+}
+'@
+            $settings.Rules.PSUseConsistentIndentation.PipelineIndentation = $PipelineIndentation
+            Invoke-Formatter -ScriptDefinition $idempotentScriptDefinition -Settings $settings | Should -Be $idempotentScriptDefinition
+        }
 
         It "Should indent pipelines correctly using NoIndentation option" {
             $def = @'

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 using System;
@@ -90,7 +90,8 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
         {
             IncreaseIndentationForFirstPipeline,
             IncreaseIndentationAfterEveryPipeline,
-            NoIndentation
+            NoIndentation,
+            None
         }
 
         // TODO make this configurable
@@ -129,8 +130,10 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
             var tokens = Helper.Instance.Tokens;
             var diagnosticRecords = new List<DiagnosticRecord>();
             var indentationLevel = 0;
+            var currentIndenationLevelIncreaseDueToPipelines = 0;
             var onNewLine = true;
-            var pipelineAsts = ast.FindAll(testAst => testAst is PipelineAst && (testAst as PipelineAst).PipelineElements.Count > 1, true);
+            var pipelineAsts = ast.FindAll(testAst => testAst is PipelineAst && (testAst as PipelineAst).PipelineElements.Count > 1, true).ToList();
+            int minimumPipelineAstIndex = 0;
             for (int tokenIndex = 0; tokenIndex < tokens.Length; tokenIndex++)
             {
                 var token = tokens[tokenIndex];
@@ -151,8 +154,9 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
                         break;
 
                     case TokenKind.Pipe:
-                        bool pipelineIsFollowedByNewlineOrLineContinuation = tokenIndex < tokens.Length - 1 && tokenIndex > 0 &&
-                              (tokens[tokenIndex + 1].Kind == TokenKind.NewLine || tokens[tokenIndex + 1].Kind == TokenKind.LineContinuation);
+                        if (pipelineIndentationStyle == PipelineIndentationStyle.None) { break; }
+                        bool pipelineIsFollowedByNewlineOrLineContinuation =
+                            PipelineIsFollowedByNewlineOrLineContinuation(tokens, tokenIndex);
                         if (!pipelineIsFollowedByNewlineOrLineContinuation)
                         {
                             break;
@@ -160,14 +164,18 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
                         if (pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationAfterEveryPipeline)
                         {
                             AddViolation(token, indentationLevel++, diagnosticRecords, ref onNewLine);
+                            currentIndenationLevelIncreaseDueToPipelines++;
                             break;
                         }
                         if (pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationForFirstPipeline)
                         {
-                            bool isFirstPipeInPipeline = pipelineAsts.Any(pipelineAst => PositionIsEqual(((PipelineAst)pipelineAst).PipelineElements[0].Extent.EndScriptPosition, tokens[tokenIndex - 1].Extent.EndScriptPosition));
+                            bool isFirstPipeInPipeline = pipelineAsts.Any(pipelineAst =>
+                                PositionIsEqual(LastPipeOnFirstLineWithPipeUsage((PipelineAst)pipelineAst).Extent.EndScriptPosition,
+                                   tokens[tokenIndex - 1].Extent.EndScriptPosition));
                             if (isFirstPipeInPipeline)
                             {
                                 AddViolation(token, indentationLevel++, diagnosticRecords, ref onNewLine);
+                                currentIndenationLevelIncreaseDueToPipelines++;
                             }
                         }
                         break;
@@ -212,19 +220,21 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
                                 }
                             }
 
-                            var lineHasPipelineBeforeToken = tokens.Any(oneToken =>
-                                oneToken.Kind == TokenKind.Pipe &&
-                                oneToken.Extent.StartLineNumber == token.Extent.StartLineNumber &&
-                                oneToken.Extent.StartColumnNumber < token.Extent.StartColumnNumber);
+                            if (pipelineIndentationStyle == PipelineIndentationStyle.None && PreviousLineEndedWithPipe(tokens, tokenIndex, token))
+                            {
+                                continue;
+                            }
 
+                            bool lineHasPipelineBeforeToken = LineHasPipelineBeforeToken(tokens, tokenIndex, token);
                             AddViolation(token, tempIndentationLevel, diagnosticRecords, ref onNewLine, lineHasPipelineBeforeToken);
                         }
                         break;
                 }
 
+                if (pipelineIndentationStyle == PipelineIndentationStyle.None) { continue; }
+
                 // Check if the current token matches the end of a PipelineAst
-                var matchingPipeLineAstEnd = pipelineAsts.FirstOrDefault(pipelineAst =>
-                        PositionIsEqual(pipelineAst.Extent.EndScriptPosition, token.Extent.EndScriptPosition)) as PipelineAst;
+                PipelineAst matchingPipeLineAstEnd = MatchingPipelineAstEnd(pipelineAsts, ref minimumPipelineAstIndex, token);
                 if (matchingPipeLineAstEnd == null)
                 {
                     continue;
@@ -238,17 +248,127 @@ namespace Microsoft.Windows.PowerShell.ScriptAnalyzer.BuiltinRules
                     continue;
                 }
 
-                if (pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationForFirstPipeline)
+                if (pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationForFirstPipeline ||
+                    pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationAfterEveryPipeline)
                 {
-                    indentationLevel = ClipNegative(indentationLevel - 1);
-                }
-                else if (pipelineIndentationStyle == PipelineIndentationStyle.IncreaseIndentationAfterEveryPipeline)
-                {
-                    indentationLevel = ClipNegative(indentationLevel - (matchingPipeLineAstEnd.PipelineElements.Count - 1));
+                    indentationLevel = ClipNegative(indentationLevel - currentIndenationLevelIncreaseDueToPipelines);
+                    currentIndenationLevelIncreaseDueToPipelines = 0;
                 }
             }
 
             return diagnosticRecords;
+        }
+
+        private static bool PipelineIsFollowedByNewlineOrLineContinuation(Token[] tokens, int startIndex)
+        {
+            if (startIndex >= tokens.Length - 1)
+            {
+                return false;
+            }
+            
+            Token nextToken = null;
+            for (int i = startIndex + 1; i < tokens.Length; i++)
+            {
+                nextToken = tokens[i];
+
+                switch (nextToken.Kind)
+                {
+                    case TokenKind.Comment:
+                        continue;
+
+                    case TokenKind.NewLine:
+                    case TokenKind.LineContinuation:
+                        return true;
+
+                    default:
+                        return false;
+                }
+            }
+            
+            // We've run out of tokens but haven't seen a newline
+            return false;
+        }
+
+        private static bool PreviousLineEndedWithPipe(Token[] tokens, int tokenIndex, Token token)
+        {
+            if (tokenIndex < 2 || token.Extent.StartLineNumber == 1)
+            {
+                return false;
+            }
+
+            int searchIndex = tokenIndex - 2;
+            int searchLine;
+            do
+            {
+                searchLine = tokens[searchIndex].Extent.StartLineNumber;
+                if (tokens[searchIndex].Kind == TokenKind.Comment)
+                {
+                    searchIndex--;
+                }
+                else if (tokens[searchIndex].Kind == TokenKind.Pipe)
+                {
+                    return true;
+                }
+                else
+                {
+                    break;
+                }
+            } while (searchLine == token.Extent.StartLineNumber - 1 && searchIndex >= 0);
+
+            return false;
+        }
+
+        private static bool LineHasPipelineBeforeToken(Token[] tokens, int tokenIndex, Token token)
+        {
+            int searchIndex = tokenIndex;
+            int searchLine = token.Extent.StartLineNumber;
+            do
+            {
+                searchLine = tokens[searchIndex].Extent.StartLineNumber;
+                int searchcolumn = tokens[searchIndex].Extent.StartColumnNumber;
+                if (tokens[searchIndex].Kind == TokenKind.Pipe && searchcolumn < token.Extent.StartColumnNumber)
+                {
+                    return true;
+                }
+                searchIndex--;
+            } while (searchLine == token.Extent.StartLineNumber && searchIndex >= 0);
+            return false;
+        }
+
+        private static CommandBaseAst LastPipeOnFirstLineWithPipeUsage(PipelineAst pipelineAst)
+        {
+            CommandBaseAst lastPipeOnFirstLineWithPipeUsage = pipelineAst.PipelineElements[0];
+            foreach (CommandBaseAst pipelineElement in pipelineAst.PipelineElements.Skip(1))
+            {
+                if (pipelineElement.Extent.StartLineNumber == pipelineAst.PipelineElements[0].Extent.StartLineNumber ||
+                    pipelineElement.Extent.StartLineNumber == pipelineAst.PipelineElements[0].Extent.EndLineNumber ||
+                    pipelineElement.Extent.EndLineNumber == pipelineAst.PipelineElements[0].Extent.EndLineNumber)
+                {
+                    lastPipeOnFirstLineWithPipeUsage = pipelineElement;
+                }
+            }
+            return lastPipeOnFirstLineWithPipeUsage;
+        }
+
+        private static PipelineAst MatchingPipelineAstEnd(List<Ast> pipelineAsts, ref int minimumPipelineAstIndex, Token token)
+        {
+            PipelineAst matchingPipeLineAstEnd = null;
+            for (int i = minimumPipelineAstIndex; i < pipelineAsts.Count; i++)
+            {
+                if (pipelineAsts[i].Extent.EndScriptPosition.LineNumber > token.Extent.EndScriptPosition.LineNumber)
+                {
+                    break;
+                }
+
+                if (PositionIsEqual(pipelineAsts[i].Extent.EndScriptPosition, token.Extent.EndScriptPosition))
+                {
+                    matchingPipeLineAstEnd = pipelineAsts[i] as PipelineAst;
+                    minimumPipelineAstIndex = i;
+                    break;
+                }
+            }
+
+            return matchingPipeLineAstEnd;
         }
 
         private static bool PositionIsEqual(IScriptPosition position1, IScriptPosition position2)

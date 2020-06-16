@@ -13,13 +13,15 @@
 ```powershell
     Rules = @{
         PSUseConsistentWhitespace  = @{
-            Enable          = $true
-            CheckInnerBrace = $true
-            CheckOpenBrace  = $true
-            CheckOpenParen  = $true
-            CheckOperator   = $true
-            CheckPipe       = $true
-            CheckSeparator  = $true
+            Enable                          = $true
+            CheckInnerBrace                 = $true
+            CheckOpenBrace                  = $true
+            CheckOpenParen                  = $true
+            CheckOperator                   = $true
+            CheckPipe                       = $true
+            CheckPipeForRedundantWhitespace = $false
+            CheckSeparator                  = $true
+            CheckParameter                  = $false
         }
     }
 ```
@@ -52,4 +54,13 @@ Checks if a comma or a semicolon is followed by a space. E.g. `@(1, 2, 3)` or `@
 
 #### CheckPipe: bool (Default value is `$true`)
 
-Checks if a pipe is surrounded on both sides by a space. E.g. `foo | bar` instead of `foo|bar`.
+Checks if a pipe is surrounded on both sides by a space but ignores redundant whitespace. E.g. `foo | bar` instead of `foo|bar`.
+
+#### CheckPipeForRedundantWhitespace : bool (Default value is `$false`)
+
+Checks if a pipe is surrounded by redundant whitespace (i.e. more than 1 whitespace). E.g. `foo | bar` instead of `foo    |    bar`.
+
+#### CheckParameter: bool (Default value is `$false` at the moment due to the setting being new)
+
+Checks if there is more than one space between parameters and values. E.g. `foo -bar $baz -bat` instead of `foo   -bar   $baz   -bat`. This eliminates redundant whitespace that was probably added unintentionally.
+The rule does not check for whitespace between parameter and value when the colon syntax `-ParameterName:$ParameterValue` is used as some users prefer either 0 or 1 whitespace in this case.

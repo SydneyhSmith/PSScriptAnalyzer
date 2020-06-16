@@ -31,14 +31,16 @@
             IndentationSize = 4
         }
 
-        PSUseConsistentWhitespace = @{
-            Enable          = $true
-            CheckInnerBrace = $true
-            CheckOpenBrace  = $true
-            CheckOpenParen  = $true
-            CheckOperator   = $true
-            CheckPipe       = $true
-            CheckSeparator  = $true
+        PSUseConsistentWhitespace  = @{
+            Enable                          = $true
+            CheckInnerBrace                 = $true
+            CheckOpenBrace                  = $true
+            CheckOpenParen                  = $true
+            CheckOperator                   = $true
+            CheckPipe                       = $true
+            CheckPipeForRedundantWhitespace = $false
+            CheckSeparator                  = $true
+            CheckParameter                  = $false
         }
 
         PSAlignAssignmentStatement = @{

@@ -1,29 +1,34 @@
-$directory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$testRootDirectory = Split-Path -Parent $directory
-Import-Module (Join-Path $testRootDirectory 'PSScriptAnalyzerTestHelper.psm1')
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
 
-$testManifestPath = Join-Path $directory "TestManifest"
-$testManifestBadFunctionsWildcardPath = "ManifestBadFunctionsWildcard.psd1"
-$testManifestBadFunctionsWildcardInArrayPath = "ManifestBadFunctionsWildcardInArray.psd1"
-$testManifestBadFunctionsNullPath = "ManifestBadFunctionsNull.psd1"
-$testManifestBadCmdletsWildcardPath = "ManifestBadCmdletsWildcard.psd1"
-$testManifestBadAliasesWildcardPath = "ManifestBadAliasesWildcard.psd1"
-$testManifestBadVariablesWildcardPath = "ManifestBadVariablesWildcard.psd1"
-$testManifestBadAllPath = "ManifestBadAll.psd1"
-$testManifestGoodPath = "ManifestGood.psd1"
-$testManifestInvalidPath = "ManifestInvalid.psd1"
-Import-Module (Join-Path $directory "PSScriptAnalyzerTestHelper.psm1")
+BeforeAll {
+    $testRootDirectory = Split-Path -Parent $PSScriptRoot
+    Import-Module (Join-Path $testRootDirectory 'PSScriptAnalyzerTestHelper.psm1')
 
-Function Run-PSScriptAnalyzerRule
-{
-    Param(
-        [Parameter(Mandatory)]
-        [String] $ManifestPath
-    )
+    $testManifestPath = Join-Path $PSScriptRoot "TestManifest"
+    $testManifestBadFunctionsWildcardPath = "ManifestBadFunctionsWildcard.psd1"
+    $testManifestBadFunctionsWildcardInArrayPath = "ManifestBadFunctionsWildcardInArray.psd1"
+    $testManifestBadFunctionsNullPath = "ManifestBadFunctionsNull.psd1"
+    $testManifestBadCmdletsWildcardPath = "ManifestBadCmdletsWildcard.psd1"
+    $testManifestBadAliasesWildcardPath = "ManifestBadAliasesWildcard.psd1"
+    $testManifestBadVariablesWildcardPath = "ManifestBadVariablesWildcard.psd1"
+    $testManifestBadAllPath = "ManifestBadAll.psd1"
+    $testManifestGoodPath = "ManifestGood.psd1"
+    $testManifestInvalidPath = "ManifestInvalid.psd1"
+    Import-Module (Join-Path $PSScriptRoot "PSScriptAnalyzerTestHelper.psm1")
 
-    Invoke-ScriptAnalyzer -Path (Resolve-Path (Join-Path $testManifestPath $ManifestPath))`
-                            -IncludeRule PSUseToExportFieldsInManifest
+    Function Run-PSScriptAnalyzerRule
+    {
+        Param(
+            [Parameter(Mandatory)]
+            [String] $ManifestPath
+        )
+
+        Invoke-ScriptAnalyzer -Path (Resolve-Path (Join-Path $testManifestPath $ManifestPath))`
+                                -IncludeRule PSUseToExportFieldsInManifest
+    }
 }
+
 
 Describe "UseManifestExportFields" {
 
@@ -104,12 +109,10 @@ Describe "UseManifestExportFields" {
     Context "When given a non module manifest file" {
         It "does not flag a PowerShell data file" {
             Invoke-ScriptAnalyzer `
-                -Path "$directory/TestManifest/PowerShellDataFile.psd1" `
+                -Path "$PSScriptRoot/TestManifest/PowerShellDataFile.psd1" `
                 -IncludeRule "PSUseToExportFieldsInManifest" `
                 -OutVariable ruleViolation
             $ruleViolation.Count | Should -Be 0
         }
     }
 }
-
-
